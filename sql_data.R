@@ -9,7 +9,6 @@ library(RPostgreSQL)
       query <- paste0(
         "SELECT 
         	campaign_id,
-        	
         	CASE WHEN case_type = 'Operating Company' THEN 'Operating Company' ELSE 'NPE' END AS case_type,
         	original_court,
         	court_abbreviations.court_abbrev,

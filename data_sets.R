@@ -101,21 +101,22 @@ source("sql_data.R")
     summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id)) %>%
     mutate(total_defs = sum(defendant_count)) %>%
     mutate(percent_defs = round(defendant_count / total_defs,2)) %>%
-    top_n(5, defendant_count) %>%
     select(court_abbrev, defendant_count, percent_defs) %>%
-    arrange(defendant_count)
+    arrange(desc(defendant_count))
   excel_top_districts_overall 
   
   # Top Districts (NPE)
   excel_top_districts_npe <- dc_defendants() %>%
-    filter(defendant_started > '2020-01-01' & defendant_started < '2020-12-31', case_type == "NPE") %>%
+    filter(defendant_started > '2020-01-01' & defendant_started < '2020-
+           
+           
+           12-31', case_type == "NPE") %>%
     group_by(court_abbrev) %>%
     summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id)) %>%
     mutate(total_defs = sum(defendant_count)) %>%
     mutate(percent_defs = round(defendant_count / total_defs,2)) %>%
-    top_n(5, defendant_count) %>%
     select(court_abbrev, defendant_count, percent_defs) %>%
-    arrange(defendant_count)
+    arrange(desc(defendant_count))
   excel_top_districts_npe
   
   # Top Districts (Operating Company)
@@ -125,9 +126,8 @@ source("sql_data.R")
     summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id)) %>%
     mutate(total_defs = sum(defendant_count)) %>%
     mutate(percent_defs = round(defendant_count / total_defs,2)) %>%
-    top_n(5, defendant_count) %>%
     select(court_abbrev, defendant_count, percent_defs) %>%
-    arrange(defendant_count)
+    arrange(desc(defendant_count))
   excel_top_districts_opco
   
   # PTAB filings by Quarter
@@ -153,3 +153,14 @@ source("sql_data.R")
       total = n()
     )
   excel_ptab_by_year
+  
+#### EXCEL EXPORT DATASETS ####  
+  # Top Districts (Overall)
+  ppt_top_districts_overall <- dc_defendants() %>%
+    filter(defendant_started > '2020-01-01' & defendant_started < '2020-12-31', case_type != "Design Patent") %>%
+    group_by(court_abbrev) %>%
+    summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id)) %>%
+    top_n(5) %>%
+    select(court_abbrev, defendant_count) %>%
+    arrange(desc(defendant_count))
+  ppt_top_districts_overall
