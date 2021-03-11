@@ -1,0 +1,92 @@
+/*NAME:Defendants Added by Quarter*/
+SELECT 
+	EXTRACT(year FROM defendant_started) AS year,
+	EXTRACT(quarter FROM defendant_started) AS quarter,
+	COUNT(CASE WHEN case_type = 'Operating Company' THEN defendant_ent_id END) AS operating_company,
+	COUNT(CASE WHEN case_type <> 'Operating Company' THEN defendant_ent_id END) AS npe
+FROM rpx_reporting.lits_campaigns
+WHERE dj = '0'
+	AND defendant_started > '2015-12-31'
+	AND all_design_pats IS FALSE
+GROUP BY 1,2,3
+ORDER BY 1,2;
+
+/*NAME:Defendants Added by Year*/
+SELECT 
+	EXTRACT(year FROM defendant_started) AS year,
+	COUNT(CASE WHEN case_type = 'Operating Company' THEN defendant_ent_id END) AS operating_company,
+	COUNT(CASE WHEN case_type <> 'Operating Company' THEN defendant_ent_id END) AS npe
+FROM rpx_reporting.lits_campaigns
+WHERE dj = '0'
+	AND defendant_started > '2009-12-31'
+	AND all_design_pats IS FALSE
+GROUP BY 1
+ORDER BY 1;
+
+/*NAME:Top Districts: Overall*/
+SELECT DISTINCT
+	lits_campaigns.original_court,
+	court_abbreviations.court_abbrev,
+	COUNT(defendant_ent_id) AS def_total
+FROM rpx_reporting.lits_campaigns
+	LEFT JOIN core.court_abbreviations 
+		ON lits_campaigns.original_court = court_abbreviations.court_name
+WHERE dj = '0'
+	AND all_design_pats IS FALSE
+	AND defendant_started BETWEEN '2020-10-01' AND '2020-12-31'
+GROUP BY 1,2
+ORDER BY 3 DESC;
+
+/*NAME:Top Districts: NPE*/
+SELECT DISTINCT
+	lits_campaigns.original_court,
+	court_abbreviations.court_abbrev,
+	COUNT(defendant_ent_id) AS npe_defs
+FROM rpx_reporting.lits_campaigns
+	LEFT JOIN core.court_abbreviations 
+		ON lits_campaigns.original_court = court_abbreviations.court_name
+WHERE dj = '0'
+	AND case_type <> 'Operating Company'
+	AND all_design_pats IS FALSE
+	AND defendant_started BETWEEN '2020-10-01' AND '2020-12-31'
+GROUP BY 1,2
+ORDER BY 3 DESC;
+
+/*NAME:Top Districts: Operating Company*/
+SELECT DISTINCT
+	lits_campaigns.original_court,
+	court_abbreviations.court_abbrev,
+	COUNT(defendant_ent_id) AS opco_defs
+FROM rpx_reporting.lits_campaigns
+	LEFT JOIN core.court_abbreviations 
+		ON lits_campaigns.original_court = court_abbreviations.court_name
+WHERE dj = '0'
+	AND case_type = 'Operating Company'
+	AND all_design_pats IS FALSE
+	AND defendant_started BETWEEN '2020-10-01' AND '2020-12-31'
+GROUP BY 1,2
+ORDER BY 3 DESC;
+
+/*NAME:PTAB Petitions Filed by Quarter*/
+SELECT 
+	EXTRACT(year FROM ptab_filing_date) AS year,
+	EXTRACT(quarter FROM ptab_filing_date) AS quarter,
+	'Q' || EXTRACT(quarter FROM ptab_filing_date) || ' ' || 	EXTRACT(year FROM ptab_filing_date) AS quarter_filed,
+	COUNT(DISTINCT CASE WHEN ptab_case_type = 'IPR' THEN case_number END) AS ipr,  
+	COUNT(DISTINCT CASE WHEN ptab_case_type = 'CBM' THEN case_number END) AS cbm,  
+	COUNT(DISTINCT CASE WHEN ptab_case_type = 'PGR' THEN case_number END) AS pgr
+FROM rpx_reporting.all_ptab 
+WHERE ptab_filing_date > '2018-12-31'
+GROUP BY 1,2,3
+ORDER BY 1,2;
+
+/*NAME:PTAB Petitions Filed by Year*/
+SELECT 
+	EXTRACT(year FROM ptab_filing_date) AS year,
+	COUNT(DISTINCT CASE WHEN ptab_case_type = 'IPR' THEN case_number END) AS ipr,  
+	COUNT(DISTINCT CASE WHEN ptab_case_type = 'CBM' THEN case_number END) AS cbm,  
+	COUNT(DISTINCT CASE WHEN ptab_case_type = 'PGR' THEN case_number END) AS pgr
+FROM rpx_reporting.all_ptab 
+WHERE ptab_filing_date > '2015-12-31'
+GROUP BY 1
+ORDER BY 1;
