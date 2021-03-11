@@ -71,7 +71,7 @@ ORDER BY 3 DESC;
 SELECT 
 	EXTRACT(year FROM ptab_filing_date) AS year,
 	EXTRACT(quarter FROM ptab_filing_date) AS quarter,
-	'Q' || EXTRACT(quarter FROM ptab_filing_date) || ' ' || 	EXTRACT(year FROM ptab_filing_date) AS quarter_filed,
+	'Q' || EXTRACT(quarter FROM ptab_filing_date) || ' ' || EXTRACT(year FROM ptab_filing_date) AS quarter_filed,
 	COUNT(DISTINCT CASE WHEN ptab_case_type = 'IPR' THEN case_number END) AS ipr,  
 	COUNT(DISTINCT CASE WHEN ptab_case_type = 'CBM' THEN case_number END) AS cbm,  
 	COUNT(DISTINCT CASE WHEN ptab_case_type = 'PGR' THEN case_number END) AS pgr
