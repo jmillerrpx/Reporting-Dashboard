@@ -2,24 +2,25 @@
 SELECT 
 	EXTRACT(year FROM defendant_started) AS year,
 	EXTRACT(quarter FROM defendant_started) AS quarter,
-	COUNT(CASE WHEN case_type = 'Operating Company' THEN defendant_ent_id END) AS operating_company,
-	COUNT(CASE WHEN case_type <> 'Operating Company' THEN defendant_ent_id END) AS npe
+	'Q' || EXTRACT(quarter FROM defendant_started) || ' ' || EXTRACT(year FROM defendant_started) AS quarter_year,
+	COUNT(CASE WHEN case_type <> 'Operating Company' AND all_design_pats IS FALSE THEN defendant_ent_id END) AS npe,
+	COUNT(CASE WHEN case_type = 'Operating Company' AND all_design_pats IS FALSE THEN defendant_ent_id END) AS operating_company,
+	COUNT(CASE WHEN all_design_pats IS TRUE THEN defendant_ent_id END) AS design_patent
 FROM rpx_reporting.lits_campaigns
 WHERE dj = '0'
-	AND defendant_started > '2015-12-31'
-	AND all_design_pats IS FALSE
+	AND defendant_started > '2009-12-31'
 GROUP BY 1,2,3
 ORDER BY 1,2;
 
 /*NAME:Defendants Added by Year*/
 SELECT 
 	EXTRACT(year FROM defendant_started) AS year,
-	COUNT(CASE WHEN case_type = 'Operating Company' THEN defendant_ent_id END) AS operating_company,
-	COUNT(CASE WHEN case_type <> 'Operating Company' THEN defendant_ent_id END) AS npe
+	COUNT(CASE WHEN case_type <> 'Operating Company' AND all_design_pats IS FALSE THEN defendant_ent_id END) AS npe,
+	COUNT(CASE WHEN case_type = 'Operating Company' AND all_design_pats IS FALSE THEN defendant_ent_id END) AS operating_company,
+	COUNT(CASE WHEN all_design_pats IS TRUE THEN defendant_ent_id END) AS design_patent
 FROM rpx_reporting.lits_campaigns
 WHERE dj = '0'
 	AND defendant_started > '2009-12-31'
-	AND all_design_pats IS FALSE
 GROUP BY 1
 ORDER BY 1;
 
