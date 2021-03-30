@@ -129,3 +129,29 @@ FROM rpx_reporting.all_ptab
 WHERE ptab_filing_date > '2015-12-31'
 GROUP BY 1
 ORDER BY 1;
+
+
+/*NAME:IPR Petitions by Institution Outcome and Quarter*/
+SELECT DISTINCT 
+	EXTRACT(year FROM institution_decision_date) AS year,
+	EXTRACT(quarter FROM institution_decision_date) AS quarter,
+	'Q' || EXTRACT(quarter FROM institution_decision_date) || ' ' || EXTRACT(year FROM institution_decision_date) AS institution_decision_quarter,
+	institution_decision_outcome,
+	COUNT(DISTINCT case_number) AS petition_count 
+	FROM rpx_reporting.all_ptab
+WHERE ptab_case_type = 'IPR'
+	AND institution_decision_date > '2018-12-31'
+GROUP BY 1,2,3,4
+ORDER BY 1,2;
+
+
+/*NAME:IPR Petitions by Institution Outcome and Year*/
+SELECT DISTINCT 
+	EXTRACT(year FROM institution_decision_date) AS year,
+	institution_decision_outcome,
+	COUNT(DISTINCT case_number) AS petition_count 
+	FROM rpx_reporting.all_ptab
+WHERE ptab_case_type = 'IPR'
+	AND institution_decision_date > '2015-12-31'
+GROUP BY 1,2
+ORDER BY 1,2;
