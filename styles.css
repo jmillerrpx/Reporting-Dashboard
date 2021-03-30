@@ -1,0 +1,101 @@
+@charset "UTF-8";
+@import url('https://fonts.googleapis.com/css?family=Montserrat:400');
+
+html, body { 
+  height: 100%;
+  width: 100%;
+}
+body {
+  font-family: 'Montserrat', sans-serif;
+  font-size: 14px;
+}
+/* Title box */
+.skin-blue .main-header .logo {
+  font-family: "Montserrat", Arial, serif;
+  font-weight: bold;
+  font-size: 18px;
+  background-color: #15354A;
+}
+/* Nav bar */
+.skin-blue .main-header .navbar {
+  background-color: #15354A;
+}
+
+/* logo when hovered */
+  .skin-blue .main-header .logo:hover {
+    background-color: #15354A;
+  } 
+  
+  /* logo button when hovered */
+  .skin-blue .main-header .navbar .sidebar-toggle:hover {
+    background-color: #00A0DE;
+  }
+
+/*Sidebar Color*/
+.skin-blue .main-sidebar, .skin-blue .wrapper {
+    background-color: #FFFFFF;
+    border: #515151;
+
+}
+
+/* other links in the sidebarmenu when hovered */
+  .skin-blue .main-sidebar .sidebar .sidebar-menu a:hover{
+    background-color: #00A0DE;
+      border-left-color: #fff;
+  } 
+  
+/* Sidebar font color*/  
+  .skin-blue .sidebar a {
+    color: #515151;
+  }
+  
+  /*sidebar menu background colors*/
+.skin-blue .sidebar-menu>li.active>a, .skin-blue .sidebar-menu>li:hover>a {
+    color: #fff;
+    background: #15354A;
+    border-left-color: #00A0DE;
+}
+
+
+
+/* control panel box */
+.box.box-solid.bg-blue {
+  background-color: #003C60 !important;
+}
+
+
+.dc_box {
+  background-color: #15354A !important;
+  color: #fff;
+}
+
+.ptab_box {
+  background-color: #274b69 !important;
+  color: #fff;
+}
+
+.alice_box {
+    background-color: #063e66 !important;
+  color: #fff;
+}
+
+/*#005082*/
+
+.box-header {
+    color: #444;
+    display: block;
+    padding: 10px;
+    position: relative;
+}
+
+/* color for downloadHandlers */
+  .skin-blue .sidebar .shiny-download-link {
+    color: #444;
+  } 
+  
+  /* main body background color */
+  .content-wrapper, .right-side {
+    background-color: #FFFFFF;
+  }
+  
+  

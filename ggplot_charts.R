@@ -146,5 +146,26 @@ ptab_by_year_chart <-ggplot(ptab_by_year, aes(year, petition_count, fill = ptab_
 ptab_by_year_chart
 
 
-
+# IPR Institutions by Quarter Chart
+institutions_by_quarter_chart <-ggplot(institutions_by_quarter, aes(quarter_instituted_ggplot, petition_count, fill = institution_decision_outcome)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = format(as.numeric(petition_count), nsmall = 0, big.mark = ","), color = institution_decision_outcome), position = position_stack(vjust = .5), size = 4, show.legend = FALSE) +
+  coord_cartesian(clip = "off") +
+  scale_color_manual(values = c("Partial Institution" = rgb(0,0,0, alpha = 0, maxColorValue = 255), "No Claims Instituted" = "white", "All Claims Instituted" = "white")) +
+  scale_fill_manual(values = c(rgb(0,119,191,maxColorValue = 255), rgb(246,138,29,maxColorValue = 255), rgb(186,188,192,maxColorValue = 255))) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  geom_text(aes(label = format(as.numeric(stat(y)), nsmall = 0, big.mark = ","), group = quarter_instituted_ggplot), stat = 'summary', fun = sum, vjust = -1, size = 4) +
+  theme(
+    axis.title = element_blank(),
+    axis.ticks = element_blank(),
+    axis.line.y = element_blank(),
+    axis.line.x = element_line(color = "black"),
+    axis.text.y = element_blank(),
+    axis.text.x = element_text(size = 11, color = "black"),
+    legend.title = element_blank(),
+    legend.text = element_text(size = 11),
+    legend.position = 'bottom',
+    rect = element_blank()
+  )
+institutions_by_quarter_chart
 

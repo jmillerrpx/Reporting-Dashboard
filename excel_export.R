@@ -14,14 +14,7 @@ data_label_format <-  createStyle(
                   valign = "center"
                   )
 
-x_axis_format <-  createStyle(
-                  fontName = "Arial",
-                  fontSize = 11,
-                  fontColour = rgb(0,0,0, maxColorValue = 255),
-                  numFmt = "GENERAL",
-                  halign = "center",
-                  valign = "center"
-                  )
+
 
 percentage_format <-  createStyle(
                     fontName = "Arial",

@@ -7,7 +7,8 @@ source("sql_data.R")
     filter(defendant_started > '2016-12-31' & defendant_started < '2021-01-01') %>%
     mutate(case_type = factor(case_type, levels=c("Design Patent","Operating Company","NPE"))) %>%
     group_by(quarter_started_ggplot, case_type) %>%
-    summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id)) %>%
+    summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id),
+              def_count_percentage = defendant_count/sum(defendant_count)) %>%
     ungroup()
   defs_by_quarter
   
@@ -21,34 +22,64 @@ source("sql_data.R")
   defs_by_year
   
   # Top Districts (Overall)
-  top_districts_overall <- dc_defendants() %>%
-    filter(defendant_started > '2020-01-01' & defendant_started < '2020-12-31', case_type != "Design Patent") %>%
-    group_by(court_abbrev) %>%
+  top_districts_overall <- top_districts_and_judges() %>%
+    filter(defendant_started_in_district >= '2020-01-01' & defendant_started_in_district <= '2020-12-31', case_type != "Design Patent") %>%
+    group_by(court_common) %>%
     summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id)) %>%
     top_n(5) %>%
-    select(court_abbrev, defendant_count) %>%
+    select(court_common, defendant_count) %>%
     arrange(defendant_count)
   top_districts_overall
   
   # Top Districts (NPE)
-  top_districts_npe <- dc_defendants() %>%
-    filter(defendant_started > '2020-01-01' & defendant_started < '2020-12-31', case_type == "NPE") %>%
-    group_by(court_abbrev) %>%
+  top_districts_npe <- top_districts_and_judges() %>%
+    filter(defendant_started_in_district >= '2020-01-01' & defendant_started_in_district <= '2020-12-31', case_type == "NPE") %>%
+    group_by(court_common) %>%
     summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id)) %>%
     top_n(5) %>%
-    select(court_abbrev, defendant_count) %>%
+    select(court_common, defendant_count) %>%
     arrange(defendant_count)
   top_districts_npe
   
   # Top Districts (Operating Company)
-  top_districts_opco <- dc_defendants() %>%
-    filter(defendant_started > '2020-01-01' & defendant_started < '2020-12-31', case_type == "Operating Company") %>%
-    group_by(court_abbrev) %>%
+  top_districts_opco <- top_districts_and_judges() %>%
+    filter(defendant_started_in_district >= '2020-01-01' & defendant_started_in_district <= '2020-12-31', case_type == "Operating Company") %>%
+    group_by(court_common) %>%
     summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id)) %>%
     top_n(5) %>%
-    select(court_abbrev, defendant_count) %>%
+    select(court_common, defendant_count) %>%
     arrange(defendant_count)
   top_districts_opco
+  
+  # Top Judges (Overall)
+  top_judges_overall <- top_districts_and_judges() %>%
+    filter(defendant_started_in_district >= '2020-01-01' & defendant_started_in_district <= '2020-12-31', case_type != "Design Patent") %>%
+    group_by(judge) %>%
+    summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id)) %>%
+    top_n(5) %>%
+    select(judge, defendant_count) %>%
+    arrange(defendant_count)
+  top_judges_overall
+  
+  # Top Judges (NPE)
+  top_judges_npe <- top_districts_and_judges() %>%
+    filter(defendant_started_in_district >= '2020-01-01' & defendant_started_in_district <= '2020-12-31', case_type == "NPE") %>%
+    group_by(judge) %>%
+    summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id)) %>%
+    top_n(5) %>%
+    select(judge, defendant_count) %>%
+    arrange(defendant_count)
+  top_judges_npe
+  
+  # Top Judges (Operating Company)
+  top_judges_opco <- top_districts_and_judges() %>%
+    filter(defendant_started_in_district >= '2020-01-01' & defendant_started_in_district <= '2020-12-31', case_type == "Operating Company") %>%
+    group_by(judge) %>%
+    summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id)) %>%
+    top_n(5) %>%
+    select(judge, defendant_count) %>%
+    arrange(defendant_count)
+  top_judges_opco
   
   # PTAB Petitions Filed by Quarter
   ptab_by_quarter <- ptab_petitions() %>%
@@ -68,7 +99,33 @@ source("sql_data.R")
     ungroup()
   ptab_by_year
   
+  # IPR Institutions by Quarter
+  institutions_by_quarter <- ptab_petitions() %>%
+    filter(institution_decision_date > '2016-12-31' & institution_decision_date < '2021-01-01' & ptab_case_type == 'IPR') %>%
+    group_by(quarter_instituted_ggplot) %>%
+    mutate(total_petitions = n_distinct(case_number)) %>%
+    ungroup() %>%
+    group_by(quarter_instituted_ggplot, institution_decision_outcome) %>%
+    summarize(petition_count = n_distinct(case_number),
+              institution_percentage =  scales::percent(n_distinct(case_number) / total_petitions, accuracy = 1)) %>%
+    ungroup() %>%
+    distinct(quarter_instituted_ggplot, institution_decision_outcome, petition_count, institution_percentage)
+  institutions_by_quarter
+
+  # IPR Institutions by Year
+  institutions_by_year <- ptab_petitions() %>%
+    filter(institution_decision_date > '2012-12-31' & institution_decision_date < '2021-01-01' & ptab_case_type == 'IPR') %>%
+    group_by(institution_year) %>%
+    mutate(total_petitions = n_distinct(case_number)) %>%
+    ungroup() %>%
+    group_by(institution_year, institution_decision_outcome) %>%
+    summarize(petition_count = n_distinct(case_number),
+              institution_percentage =  scales::percent(n_distinct(case_number) / total_petitions, accuracy = 1)) %>%
+    ungroup() %>%
+    distinct(institution_year, institution_decision_outcome, petition_count, institution_percentage)
+  institutions_by_year
   
+
 #### EXCEL EXPORT DATASETS ####
   # District Court Defendants by Quarter
   excel_defs_by_quarter <- dc_defendants() %>%
@@ -78,7 +135,8 @@ source("sql_data.R")
       npe = sum(case_type == "NPE"),
       opco = sum(case_type == "Operating Company"),
       design = sum(case_type == "Design Patent"),
-      total = n()
+      total = n(),
+      
     )
   excel_defs_by_quarter
   
@@ -90,7 +148,8 @@ source("sql_data.R")
       npe = sum(case_type == "NPE"),
       opco = sum(case_type == "Operating Company"),
       design = sum(case_type == "Design Patent"),
-      total = n()
+      total = n(),
+      total_no_design = sum(case_type != "Design Patent")
     )
   excel_defs_by_year
   
@@ -107,10 +166,7 @@ source("sql_data.R")
   
   # Top Districts (NPE)
   excel_top_districts_npe <- dc_defendants() %>%
-    filter(defendant_started > '2020-01-01' & defendant_started < '2020-
-           
-           
-           12-31', case_type == "NPE") %>%
+    filter(defendant_started > '2020-01-01' & defendant_started < '2020-12-31', case_type == "NPE") %>%
     group_by(court_abbrev) %>%
     summarize(defendant_count = n_distinct(campaign_id,defendant_ent_id)) %>%
     mutate(total_defs = sum(defendant_count)) %>%
