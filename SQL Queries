@@ -1,4 +1,4 @@
-/*NAME:Defendants Added by Quarter*/
+/*NAME:Total Campaign Defendants Added by Quarter*/
 SELECT 
 	EXTRACT(year FROM defendant_started) AS year,
 	EXTRACT(quarter FROM defendant_started) AS quarter,
@@ -12,7 +12,7 @@ WHERE dj = '0'
 GROUP BY 1,2,3
 ORDER BY 1,2;
 
-/*NAME:Defendants Added by Year*/
+/*NAME:Total Campaign Defendants Added by Year*/
 SELECT 
 	EXTRACT(year FROM defendant_started) AS year,
 	COUNT(CASE WHEN case_type <> 'Operating Company' AND all_design_pats IS FALSE THEN defendant_ent_id END) AS npe,
@@ -67,6 +67,41 @@ WHERE dj = '0'
 	AND defendant_started BETWEEN '2020-10-01' AND '2020-12-31'
 GROUP BY 1,2
 ORDER BY 3 DESC;
+
+/*NAME:Top Judges by Unique Campaign Defendants Added (Overall)*/
+SELECT DISTINCT 
+	judge,
+	COUNT(DISTINCT campaign_id::VARCHAR || defendant_ent_id::VARCHAR) AS defendant_total
+FROM rpx_reporting.all_lits 
+	WHERE dj = '0'
+	AND defendant_started_in_district BETWEEN '2020-01-01' AND '2020-12-31'
+	AND all_design_pats IS FALSE
+GROUP BY 1
+ORDER BY 2 DESC;
+
+/*NAME:Top Judges by Unique Campaign Defendants Added (NPE)*/
+SELECT DISTINCT 
+	judge,
+	COUNT(DISTINCT campaign_id::VARCHAR || defendant_ent_id::VARCHAR) AS defendant_total
+FROM rpx_reporting.all_lits 
+	WHERE dj = '0'
+	AND defendant_started_in_district BETWEEN '2020-01-01' AND '2020-12-31'
+	AND all_design_pats IS FALSE
+	AND case_type <> 'Operating Company'
+GROUP BY 1
+ORDER BY 2 DESC;
+
+/*NAME:Top Judges by Unique Campaign Defendants Added (Operating Company)*/
+SELECT DISTINCT 
+	judge,
+	COUNT(DISTINCT campaign_id::VARCHAR || defendant_ent_id::VARCHAR) AS defendant_total
+FROM rpx_reporting.all_lits 
+	WHERE dj = '0'
+	AND defendant_started_in_district BETWEEN '2020-01-01' AND '2020-12-31'
+	AND all_design_pats IS FALSE
+	AND case_type = 'Operating Company'
+GROUP BY 1
+ORDER BY 2 DESC;
 
 /*NAME:PTAB Petitions Filed by Quarter*/
 SELECT 
