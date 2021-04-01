@@ -103,6 +103,7 @@ FROM rpx_reporting.all_lits
 GROUP BY 1
 ORDER BY 2 DESC;
 
+
 ----------PTAB----------
 
 /*NAME:PTAB Petitions Filed by Quarter*/
@@ -155,3 +156,207 @@ WHERE ptab_case_type = 'IPR'
 	AND institution_decision_date > '2015-12-31'
 GROUP BY 1,2
 ORDER BY 1,2;
+
+
+----------Alice----------
+
+/*NAME:Patents Invalidated under Alice Before and After Berkheimer*/
+SELECT DISTINCT 
+	alice_table.prepost,
+	prepost.prepost_total,
+	alice_table.rpx_outcome,
+	COUNT(DISTINCT alice_table.patent) AS outcome_total
+FROM 
+	(
+		SELECT DISTINCT 
+			CASE WHEN alice_tracker_dc_normalized.decision_date >= '2018-02-08' THEN 'Post Berkheimer' ELSE 'Pre Berkheimer' END AS prepost,
+			CASE WHEN alice_tracker_dc_normalized.rpx_outcome = 'win' THEN 'Invalid'
+				 WHEN alice_tracker_dc_normalized.rpx_outcome = 'mixed' THEN 'Mixed by Claim'
+				 WHEN alice_tracker_dc_normalized.rpx_outcome = 'loss' THEN 'Not Invalid' 
+			END AS rpx_outcome,
+			patent
+		FROM rpx_reporting.alice_tracker_dc_normalized
+	) alice_table
+	LEFT JOIN 
+		(
+			SELECT DISTINCT 
+				CASE WHEN alice_tracker_dc_normalized.decision_date >= '2018-02-08' THEN 'Post Berkheimer' ELSE 'Pre Berkheimer' END AS prepost, 
+				COUNT(DISTINCT patent) AS prepost_total
+			FROM rpx_reporting.alice_tracker_dc_normalized 
+			WHERE decision_date <= '2021-03-31'
+			GROUP BY 1
+		) prepost
+		ON alice_table.prepost = prepost.prepost
+GROUP BY 1,2,3
+ORDER BY 1 DESC,3;
+
+
+/*NAME:Patents Invalidated Under Alice Before and After Berkheimer by Procedural Stage*/
+SELECT DISTINCT 
+	alice_table.case_stage,
+	case_stage_total,
+	alice_table.prepost,
+	prepost.prepost_total,
+	alice_table.rpx_outcome,
+	rpx_outcome.rpx_outcome_total
+FROM 
+	(
+		SELECT DISTINCT 
+			CASE WHEN alice_tracker_dc_normalized.decision_date >= '2018-02-08' THEN 'Post Berkheimer' ELSE 'Pre Berkheimer' END AS prepost,
+			CASE WHEN alice_tracker_dc_normalized.rpx_outcome = 'win' THEN 'Invalid'
+				   WHEN alice_tracker_dc_normalized.rpx_outcome = 'mixed' THEN 'Mixed by Claim'
+				   WHEN alice_tracker_dc_normalized.rpx_outcome = 'loss' THEN 'Not Invalid' 
+			END AS rpx_outcome,
+			CASE WHEN alice_tracker_dc_normalized.rolled_stage ~ '12' THEN 'Rule 12' 
+				   WHEN alice_tracker_dc_normalized.rolled_stage ~'56' then 'Summary Judgment' 
+			ELSE 'Other' END AS case_stage,
+			patent
+		FROM rpx_reporting.alice_tracker_dc_normalized
+	) alice_table
+	LEFT JOIN 
+		(
+			SELECT DISTINCT 
+				CASE WHEN alice_tracker_dc_normalized.rolled_stage ~ '12' THEN 'Rule 12' 
+						 WHEN alice_tracker_dc_normalized.rolled_stage ~'56' then 'Summary Judgment' 
+				ELSE 'Other' END AS case_stage,
+				COUNT(DISTINCT patent) AS case_stage_total
+			FROM rpx_reporting.alice_tracker_dc_normalized 
+			GROUP BY 1
+		) case_stage
+		ON alice_table.case_stage = case_stage.case_stage
+	LEFT JOIN 
+		(
+			SELECT DISTINCT 
+				CASE WHEN alice_tracker_dc_normalized.rolled_stage ~ '12' THEN 'Rule 12' 
+						 WHEN alice_tracker_dc_normalized.rolled_stage ~'56' then 'Summary Judgment' 
+				ELSE 'Other' END AS case_stage,
+				CASE WHEN alice_tracker_dc_normalized.decision_date >= '2018-02-08' THEN 'Post Berkheimer' ELSE 'Pre Berkheimer' END AS prepost,
+				COUNT(DISTINCT patent) AS prepost_total
+			FROM rpx_reporting.alice_tracker_dc_normalized 
+			GROUP BY 1,2
+		) prepost
+		ON alice_table.prepost = prepost.prepost AND alice_table.case_stage = prepost.case_stage
+	LEFT JOIN
+		(
+			SELECT DISTINCT 
+				CASE WHEN alice_tracker_dc_normalized.rolled_stage ~ '12' THEN 'Rule 12' 
+						 WHEN alice_tracker_dc_normalized.rolled_stage ~'56' then 'Summary Judgment' 
+				ELSE 'Other' END AS case_stage,
+				CASE WHEN alice_tracker_dc_normalized.decision_date >= '2018-02-08' THEN 'Post Berkheimer' ELSE 'Pre Berkheimer' END AS prepost,
+				CASE WHEN alice_tracker_dc_normalized.rpx_outcome = 'win' THEN 'Invalid'
+						 WHEN alice_tracker_dc_normalized.rpx_outcome = 'mixed' THEN 'Mixed by Claim'
+						 WHEN alice_tracker_dc_normalized.rpx_outcome = 'loss' THEN 'Not Invalid' 
+				END AS rpx_outcome,
+				COUNT(DISTINCT patent) AS rpx_outcome_total
+			FROM rpx_reporting.alice_tracker_dc_normalized 
+			GROUP BY 1,2,3
+		) rpx_outcome 
+		ON alice_table.prepost = rpx_outcome.prepost AND alice_table.case_stage = rpx_outcome.case_stage AND alice_table.rpx_outcome = rpx_outcome.rpx_outcome
+WHERE alice_table.case_stage <> 'Other'
+ORDER BY 1,3 DESC,5 DESC;
+
+
+/*NAME:Patents Invalidated Under Alice by Procedural Stage*/
+SELECT DISTINCT 
+	alice_table.case_stage,
+	case_stage.case_stage_total,
+	alice_table.sufficient_facts,
+	sufficient_facts.sufficient_facts_total
+FROM 
+	(
+		SELECT DISTINCT 
+			CASE WHEN alice_tracker_dc_normalized.rolled_stage ~ '12' THEN 'Rule 12' 
+				   WHEN alice_tracker_dc_normalized.rolled_stage ~'56' then 'Summary Judgment' 
+			ELSE 'Other' END AS case_stage,
+			sufficient_facts,
+			berkheimer_aatrix,
+			patent
+		FROM rpx_reporting.alice_tracker_dc_normalized
+	) alice_table 
+	LEFT JOIN 
+		(
+			SELECT DISTINCT 
+				CASE WHEN alice_tracker_dc_normalized.rolled_stage ~ '12' THEN 'Rule 12' 
+				     WHEN alice_tracker_dc_normalized.rolled_stage ~'56' then 'Summary Judgment' 
+				ELSE 'Other' END AS case_stage,
+				COUNT(DISTINCT patent) AS case_stage_total
+			FROM rpx_reporting.alice_tracker_dc_normalized
+			WHERE berkheimer_aatrix IS NOT NULL
+			GROUP BY 1
+		) case_stage
+		ON alice_table.case_stage = case_stage.case_stage
+	LEFT JOIN
+		(
+			SELECT DISTINCT 
+				CASE WHEN alice_tracker_dc_normalized.rolled_stage ~ '12' THEN 'Rule 12' 
+				     WHEN alice_tracker_dc_normalized.rolled_stage ~'56' then 'Summary Judgment' 
+				ELSE 'Other' END AS case_stage,
+				sufficient_facts,
+				COUNT(DISTINCT patent) AS sufficient_facts_total
+			FROM rpx_reporting.alice_tracker_dc_normalized 
+			WHERE berkheimer_aatrix IS NOT NULL
+			GROUP BY 1,2
+		) sufficient_facts
+		ON alice_table.case_stage = sufficient_facts.case_stage AND alice_table.sufficient_facts = sufficient_facts.sufficient_facts
+WHERE alice_table.case_stage <> 'Other'
+	AND sufficient_facts.sufficient_facts_total IS NOT NULL
+ORDER BY 1;
+
+
+/*NAME:Patents with Alice Orders Addressing Berkheimer by Procedural Stage and Plaintiff Type*/
+SELECT DISTINCT 
+	alice_table.case_type,
+	case_type.case_type_total,
+	alice_table.case_stage,
+	case_stage.case_stage_total,
+	alice_table.sufficient_facts
+FROM 
+	(
+		SELECT DISTINCT 
+			CASE WHEN alice_tracker_dc_normalized.rolled_stage ~ '12' THEN 'Rule 12' 
+					 WHEN alice_tracker_dc_normalized.rolled_stage ~'56' then 'Summary Judgment' 
+			ELSE 'Other' END AS case_stage,
+			CASE WHEN all_lits.case_type IS NULL THEN NULL
+					 WHEN all_lits.case_type = 'Operating Company' THEN 'Operating Company'
+			ELSE 'NPE' END AS case_type,
+			sufficient_facts,
+			berkheimer_aatrix
+		FROM rpx_reporting.alice_tracker_dc_normalized 
+			LEFT JOIN rpx_reporting.all_lits 
+				ON alice_tracker_dc_normalized.case_key = all_lits.case_key 
+		WHERE berkheimer_aatrix IS NOT NULL
+	) alice_table 
+	LEFT JOIN 
+		(
+			SELECT DISTINCT 
+				CASE WHEN all_lits.case_type IS NULL THEN NULL
+						 WHEN all_lits.case_type = 'Operating Company' THEN 'Operating Company'
+				ELSE 'NPE' END AS case_type,
+				COUNT(DISTINCT patent) AS case_type_total
+			FROM rpx_reporting.alice_tracker_dc_normalized 
+				LEFT JOIN rpx_reporting.all_lits 
+					ON alice_tracker_dc_normalized.case_key = all_lits.case_key 
+			WHERE berkheimer_aatrix IS NOT NULL
+			GROUP BY 1
+		) case_type
+		ON alice_table.case_type = case_type.case_type
+	LEFT JOIN 
+		(
+			SELECT DISTINCT 
+				CASE WHEN alice_tracker_dc_normalized.rolled_stage ~ '12' THEN 'Rule 12' 
+				     WHEN alice_tracker_dc_normalized.rolled_stage ~'56' then 'Summary Judgment' 
+				ELSE 'Other' END AS case_stage,
+				CASE WHEN all_lits.case_type IS NULL THEN NULL
+						 WHEN all_lits.case_type = 'Operating Company' THEN 'Operating Company'
+				ELSE 'NPE' END AS case_type,
+				COUNT(DISTINCT patent) AS case_stage_total
+			FROM rpx_reporting.alice_tracker_dc_normalized 
+				LEFT JOIN rpx_reporting.all_lits 
+					ON alice_tracker_dc_normalized.case_key = all_lits.case_key 
+			WHERE berkheimer_aatrix IS NOT NULL
+			GROUP BY 1,2
+		) case_stage
+		ON alice_table.case_stage = case_stage.case_stage AND alice_table.case_type = case_stage.case_type
+WHERE alice_table.berkheimer_aatrix IS NOT NULL
+	AND alice_table.case_stage <> 'Other'
+ORDER BY 1,3;
