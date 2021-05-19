@@ -75,11 +75,14 @@ body {
 }
 
 .alice_box {
-    background-color: #063e66 !important;
+    background-color: #07497F !important;
   color: #fff;
 }
 
-/*#005082*/
+.notice_box {
+    background-color: #00A0DE !important;
+  color: #fff;
+}
 
 .box-header {
     color: #444;

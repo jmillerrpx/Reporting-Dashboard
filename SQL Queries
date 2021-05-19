@@ -5,9 +5,9 @@ SELECT
 	EXTRACT(year FROM defendant_started) AS year,
 	EXTRACT(quarter FROM defendant_started) AS quarter,
 	'Q' || EXTRACT(quarter FROM defendant_started) || ' ' || EXTRACT(year FROM defendant_started) AS quarter_year,
-	COUNT(CASE WHEN case_type <> 'Operating Company' AND all_design_pats IS FALSE THEN defendant_ent_id END) AS npe,
-	COUNT(CASE WHEN case_type = 'Operating Company' AND all_design_pats IS FALSE THEN defendant_ent_id END) AS operating_company,
-	COUNT(CASE WHEN all_design_pats IS TRUE THEN defendant_ent_id END) AS design_patent
+	COUNT(defendant_ent_id) FILTER (WHERE case_type <> 'Operating Company' AND all_design_pats IS FALSE AND has_eseller_defendant IS FALSE AND has_franchise_defendant IS FALSE) AS npe,
+	COUNT(defendant_ent_id) FILTER (WHERE case_type = 'Operating Company' AND all_design_pats IS FALSE AND has_eseller_defendant IS FALSE AND has_franchise_defendant IS FALSE) AS operating_company,
+	COUNT(defendant_ent_id) FILTER (WHERE all_design_pats IS TRUE OR has_eseller_defendant IS TRUE OR has_franchise_defendant IS TRUE) AS pdpef
 FROM rpx_reporting.lits_campaigns
 WHERE dj = '0'
 	AND defendant_started > '2009-12-31'
@@ -18,9 +18,9 @@ ORDER BY 1,2;
 /*NAME:Total Campaign Defendants Added by Year*/
 SELECT 
 	EXTRACT(year FROM defendant_started) AS year,
-	COUNT(CASE WHEN case_type <> 'Operating Company' AND all_design_pats IS FALSE THEN defendant_ent_id END) AS npe,
-	COUNT(CASE WHEN case_type = 'Operating Company' AND all_design_pats IS FALSE THEN defendant_ent_id END) AS operating_company,
-	COUNT(CASE WHEN all_design_pats IS TRUE THEN defendant_ent_id END) AS design_patent
+	COUNT(defendant_ent_id) FILTER (WHERE case_type <> 'Operating Company' AND all_design_pats IS FALSE AND has_eseller_defendant IS FALSE AND has_franchise_defendant IS FALSE) AS npe,
+	COUNT(defendant_ent_id) FILTER (WHERE case_type = 'Operating Company' AND all_design_pats IS FALSE AND has_eseller_defendant IS FALSE AND has_franchise_defendant IS FALSE) AS operating_company,
+	COUNT(defendant_ent_id) FILTER (WHERE all_design_pats IS TRUE OR has_eseller_defendant IS TRUE OR has_franchise_defendant IS TRUE) AS pdpef
 FROM rpx_reporting.lits_campaigns
 WHERE dj = '0'
 	AND defendant_started > '2009-12-31'
@@ -36,6 +36,8 @@ FROM rpx_reporting.all_lits
 	WHERE dj = '0'
 	AND defendant_started_in_district BETWEEN '2020-01-01' AND '2020-12-31'
 	AND all_design_pats IS FALSE
+	AND has_eseller_defendant IS FALSE
+	AND has_franchise_defendant IS FALSE
 GROUP BY 1
 ORDER BY 2 DESC;
 
@@ -47,8 +49,10 @@ SELECT DISTINCT
 FROM rpx_reporting.all_lits 
 	WHERE dj = '0'
 	AND defendant_started_in_district BETWEEN '2020-01-01' AND '2020-12-31'
-	AND all_design_pats IS FALSE
 	AND case_type <> 'Operating Company'
+	AND all_design_pats IS FALSE
+	AND has_eseller_defendant IS FALSE
+	AND has_franchise_defendant IS FALSE
 GROUP BY 1
 ORDER BY 2 DESC;
 
@@ -60,8 +64,10 @@ SELECT DISTINCT
 FROM rpx_reporting.all_lits 
 	WHERE dj = '0'
 	AND defendant_started_in_district BETWEEN '2020-01-01' AND '2020-12-31'
-	AND all_design_pats IS FALSE
 	AND case_type = 'Operating Company'
+	AND all_design_pats IS FALSE
+	AND has_eseller_defendant IS FALSE
+	AND has_franchise_defendant IS FALSE
 GROUP BY 1
 ORDER BY 2 DESC;
 
@@ -74,6 +80,8 @@ FROM rpx_reporting.all_lits
 	WHERE dj = '0'
 	AND defendant_started_in_district BETWEEN '2020-01-01' AND '2020-12-31'
 	AND all_design_pats IS FALSE
+	AND has_eseller_defendant IS FALSE
+	AND has_franchise_defendant IS FALSE
 GROUP BY 1
 ORDER BY 2 DESC;
 
@@ -85,8 +93,10 @@ SELECT DISTINCT
 FROM rpx_reporting.all_lits 
 	WHERE dj = '0'
 	AND defendant_started_in_district BETWEEN '2020-01-01' AND '2020-12-31'
-	AND all_design_pats IS FALSE
 	AND case_type <> 'Operating Company'
+	AND all_design_pats IS FALSE
+	AND has_eseller_defendant IS FALSE
+	AND has_franchise_defendant IS FALSE
 GROUP BY 1
 ORDER BY 2 DESC;
 
@@ -98,8 +108,10 @@ SELECT DISTINCT
 FROM rpx_reporting.all_lits 
 	WHERE dj = '0'
 	AND defendant_started_in_district BETWEEN '2020-01-01' AND '2020-12-31'
-	AND all_design_pats IS FALSE
 	AND case_type = 'Operating Company'
+	AND all_design_pats IS FALSE
+	AND has_eseller_defendant IS FALSE
+	AND has_franchise_defendant IS FALSE
 GROUP BY 1
 ORDER BY 2 DESC;
 
@@ -360,3 +372,138 @@ FROM
 WHERE alice_table.berkheimer_aatrix IS NOT NULL
 	AND alice_table.case_stage <> 'Other'
 ORDER BY 1,3;
+
+
+/*NAME:Patents Invalidated Under Alice Since the Decision’s Issuance*/
+SELECT DISTINCT 
+	alice_table.case_type,
+	case_type.case_type_total,
+	alice_table.rpx_outcome,
+	COUNT(DISTINCT alice_table.patent) AS outcome_total
+FROM 
+	(
+		SELECT DISTINCT 
+			CASE WHEN case_type IS NULL THEN NULL
+					 WHEN case_type = 'Operating Company' THEN 'Operating Company'
+			ELSE 'NPE' END AS case_type,
+			CASE WHEN alice_tracker_dc_normalized.rpx_outcome = 'win' THEN 'Invalid'
+				 WHEN alice_tracker_dc_normalized.rpx_outcome = 'mixed' THEN 'Mixed by Claim'
+				 WHEN alice_tracker_dc_normalized.rpx_outcome = 'loss' THEN 'Not Invalid' 
+			END AS rpx_outcome,
+			patent
+		FROM rpx_reporting.alice_tracker_dc_normalized 
+	) alice_table 
+	LEFT JOIN 
+		(
+			SELECT DISTINCT 
+				CASE WHEN all_lits.case_type IS NULL THEN NULL
+						 WHEN all_lits.case_type = 'Operating Company' THEN 'Operating Company'
+				ELSE 'NPE' END AS case_type,
+				COUNT(DISTINCT patent) AS case_type_total
+			FROM rpx_reporting.alice_tracker_dc_normalized 
+				LEFT JOIN rpx_reporting.all_lits 
+					ON alice_tracker_dc_normalized.case_key = all_lits.case_key 
+			GROUP BY 1
+		) case_type
+		ON alice_table.case_type = case_type.case_type
+WHERE alice_table.case_type IS NOT NULL
+GROUP BY 1,2,3
+ORDER BY 1;
+
+
+/*NAME:Patents Invalidated Under Alice by Market Sector*/
+SELECT DISTINCT 
+	market_sector,
+	COUNT(DISTINCT market_sector || patent::VARCHAR) AS market_sector_total,
+	COUNT(DISTINCT CASE WHEN normalized_outcome = 'Not Invalid' THEN patent ELSE NULL END) AS not_invalid,
+	COUNT(DISTINCT CASE WHEN normalized_outcome = 'Mixed by Claim' THEN patent END) AS mixed_by_claim,
+	COUNT(DISTINCT CASE WHEN normalized_outcome = 'Invalid' THEN patent END) AS invalid
+FROM
+	(
+		SELECT DISTINCT 
+			alice_tracker_dc_normalized.*,
+			CASE WHEN alice_tracker_dc_normalized.rpx_outcome = 'win' THEN 'Invalid'
+				 WHEN alice_tracker_dc_normalized.rpx_outcome = 'mixed' THEN 'Mixed by Claim'
+				 WHEN alice_tracker_dc_normalized.rpx_outcome = 'loss' THEN 'Not Invalid' 
+			END AS normalized_outcome,
+			CASE WHEN all_lits.market_sector IN ('Other', 'Energy', 'Logistics', 'Manufacturing') THEN 'Other Sectors' ELSE all_lits.market_sector END AS market_sector,
+			all_lits.court_common
+		FROM rpx_reporting.alice_tracker_dc_normalized 
+			LEFT JOIN rpx_reporting.all_lits
+				ON alice_tracker_dc_normalized.case_key = all_lits.case_key 
+		WHERE all_lits.case_key IS NOT NULL IS NOT NULL
+			AND all_lits.market_sector IS NOT NULL
+	) market_sector
+GROUP BY 1
+ORDER BY 1;
+
+
+/*NAME:Patents Invalidated Under Alice by District*/
+SELECT DISTINCT 
+	alice_table.court_common,
+	court.court_total,
+	alice_table.rpx_outcome,
+	COUNT(DISTINCT alice_table.patent) AS rpx_outcome_total
+FROM
+	(
+		SELECT DISTINCT 
+			all_lits.court_common,
+			CASE WHEN alice_tracker_dc_normalized.rpx_outcome = 'win' THEN 'Invalid'
+				 WHEN alice_tracker_dc_normalized.rpx_outcome = 'mixed' THEN 'Mixed by Claim'
+				 WHEN alice_tracker_dc_normalized.rpx_outcome = 'loss' THEN 'Not Invalid' 
+			END AS rpx_outcome,
+			patent
+		FROM rpx_reporting.alice_tracker_dc_normalized
+			LEFT JOIN rpx_reporting.all_lits 
+				ON alice_tracker_dc_normalized.case_key = all_lits.case_key 
+		WHERE all_lits.case_key IS NOT NULL 
+	) alice_table 
+	LEFT JOIN 
+		(
+			SELECT DISTINCT 
+				all_lits.court_common,
+				COUNT(DISTINCT alice_tracker_dc_normalized.patent) AS court_total
+		FROM rpx_reporting.alice_tracker_dc_normalized
+			LEFT JOIN rpx_reporting.all_lits 
+				ON alice_tracker_dc_normalized.case_key = all_lits.case_key 
+		WHERE all_lits.case_key IS NOT NULL 
+		GROUP BY 1
+		) court 
+		ON alice_table.court_common = court.court_common 
+GROUP BY 1,2,3
+ORDER BY 2 DESC;
+
+
+/*NAME:Patents Invalidated Under Alice by District (National)*/
+SELECT DISTINCT 
+	alice_table.court_common,
+	court.court_total,
+	alice_table.rpx_outcome,
+	COUNT(DISTINCT alice_table.patent) AS rpx_outcome_total
+FROM
+	(
+		SELECT DISTINCT 
+			'National' AS court_common,
+			CASE WHEN alice_tracker_dc_normalized.rpx_outcome = 'win' THEN 'Invalid'
+				 WHEN alice_tracker_dc_normalized.rpx_outcome = 'mixed' THEN 'Mixed by Claim'
+				 WHEN alice_tracker_dc_normalized.rpx_outcome = 'loss' THEN 'Not Invalid' 
+			END AS rpx_outcome,
+			patent
+		FROM rpx_reporting.alice_tracker_dc_normalized
+			LEFT JOIN rpx_reporting.all_lits 
+				ON alice_tracker_dc_normalized.case_key = all_lits.case_key 
+		WHERE all_lits.case_key IS NOT NULL 
+	) alice_table 
+	LEFT JOIN 
+		(
+			SELECT DISTINCT 
+				'National' AS court_common,
+				COUNT(DISTINCT alice_tracker_dc_normalized.patent) AS court_total
+		FROM rpx_reporting.alice_tracker_dc_normalized
+			LEFT JOIN rpx_reporting.all_lits 
+				ON alice_tracker_dc_normalized.case_key = all_lits.case_key 
+		WHERE all_lits.case_key IS NOT NULL 
+		) court 
+		ON alice_table.court_common = court.court_common 
+GROUP BY 1,2,3
+ORDER BY 2 DESC;

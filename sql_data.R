@@ -6,48 +6,50 @@ dc_defendants <- function(){
   con <- dbConnect(drv,dbname="rpx",host="prod-coredb",
                    port=5432,user="mktintel_app",password="mktintel_app_pwd")
   query <- paste0(
-    "SELECT 
-        	campaign_id,
-        	CASE WHEN case_type = 'Operating Company' THEN 'Operating Company' ELSE 'NPE' END AS case_type,
-        	original_court,
-        	court_abbreviations.court_abbrev,
-        	market_sector,
-        	defendant_ent_id,
-        	normalized_defendant,
-        	defendant_started,
-        	CAST(EXTRACT(year FROM defendant_started) AS VARCHAR) AS year,
-        	EXTRACT(quarter FROM defendant_started) AS quarter,
-        	EXTRACT(year FROM defendant_started) || '\n' || 'Q' ||	EXTRACT(quarter FROM defendant_started) AS quarter_started_ggplot,
-        	EXTRACT(year FROM defendant_started) || ' ' || 'Q' ||	EXTRACT(quarter FROM defendant_started) AS quarter_started
-        FROM rpx_reporting.lits_campaigns
-        	LEFT JOIN core.court_abbreviations 
-            ON lits_campaigns.original_court = court_abbreviations.court_name
-        WHERE dj = '0'
-        	AND defendant_started > '2009-12-31'
-        	AND all_design_pats IS FALSE
-    
-        UNION
-    
-        SELECT 
-        	campaign_id,
-        	'Design Patent' AS case_type,
-        	original_court,
-        	court_abbreviations.court_abbrev,
-      		market_sector,
-        	defendant_ent_id,
-        	normalized_defendant,
-        	defendant_started,
-        	CAST(EXTRACT(year FROM defendant_started) AS VARCHAR) AS year,
-        	EXTRACT(quarter FROM defendant_started) AS quarter,
-        	EXTRACT(year FROM defendant_started) || '\n' || 'Q' ||	EXTRACT(quarter FROM defendant_started) AS quarter_started_ggplot,
-	        EXTRACT(year FROM defendant_started) || ' ' || 'Q' ||	EXTRACT(quarter FROM defendant_started) AS quarter_started
-        FROM rpx_reporting.lits_campaigns
-          LEFT JOIN core.court_abbreviations 
-            ON lits_campaigns.original_court = court_abbreviations.court_name
-        WHERE dj = '0'
-        	AND defendant_started > '2009-12-31'
-        	AND all_design_pats IS TRUE
-        ORDER BY defendant_started")
+    "SELECT DISTINCT
+      	campaign_id,
+      	CASE WHEN case_type = 'Operating Company' THEN 'Operating Company' ELSE 'NPE' END AS case_type,
+      	original_court,
+      	court_abbreviations.court_abbrev,
+      	market_sector,
+      	defendant_ent_id,
+      	normalized_defendant,
+      	defendant_started,
+      	CAST(EXTRACT(year FROM defendant_started) AS VARCHAR) AS year,
+      	EXTRACT(quarter FROM defendant_started) AS quarter,
+      	EXTRACT(year FROM defendant_started) || '\n' || 'Q' ||	EXTRACT(quarter FROM defendant_started) AS quarter_started_ggplot,
+      	EXTRACT(year FROM defendant_started) || ' ' || 'Q' ||	EXTRACT(quarter FROM defendant_started) AS quarter_started
+      FROM rpx_reporting.lits_campaigns
+      	LEFT JOIN core.court_abbreviations 
+      		ON lits_campaigns.original_court = court_abbreviations.court_name
+      WHERE dj = '0'
+      	AND defendant_started > '2009-12-31'
+      	AND all_design_pats IS FALSE
+      	AND has_eseller_defendant IS FALSE
+      	AND has_franchise_defendant IS FALSE
+      
+      UNION
+      
+      SELECT DISTINCT
+      	campaign_id,
+      	'PDPEF' AS case_type,
+      	original_court,
+      	court_abbreviations.court_abbrev,
+      	market_sector,
+      	defendant_ent_id,
+      	normalized_defendant,
+      	defendant_started,
+      	CAST(EXTRACT(year FROM defendant_started) AS VARCHAR) AS year,
+      	EXTRACT(quarter FROM defendant_started) AS quarter,
+      	EXTRACT(year FROM defendant_started) || '\n' || 'Q' ||	EXTRACT(quarter FROM defendant_started) AS quarter_started_ggplot,
+      	EXTRACT(year FROM defendant_started) || ' ' || 'Q' ||	EXTRACT(quarter FROM defendant_started) AS quarter_started
+      FROM rpx_reporting.lits_campaigns
+      	LEFT JOIN core.court_abbreviations 
+      		ON lits_campaigns.original_court = court_abbreviations.court_name
+      WHERE (all_design_pats IS TRUE OR has_eseller_defendant IS TRUE OR has_franchise_defendant IS TRUE)
+      	AND dj = '0'
+      	AND defendant_started > '2009-12-31'
+      ORDER BY defendant_started;")
   executeQ <- dbGetQuery(con,query)
   dbDisconnect(con)
   return(executeQ)
@@ -128,4 +130,38 @@ ptab_petitions <- function(){
 }
 ptab_petitions()
 
-
+alice_patents <- function(){
+  drv <- dbDriver("PostgreSQL")
+  con <- dbConnect(drv,dbname="rpx",host="prod-coredb",
+                   port=5432,user="mktintel_app",password="mktintel_app_pwd")
+  query <- paste0(
+    "SELECT DISTINCT 
+          CASE WHEN alice_tracker_dc_normalized.decision_date >= '2018-02-08' THEN 'Post-Berkheimer' ELSE 'Pre-Berkheimer' END AS prepost, 
+          CASE WHEN alice_tracker_dc_normalized.rpx_outcome = 'win' THEN 'Invalid'
+               WHEN alice_tracker_dc_normalized.rpx_outcome = 'mixed' THEN 'Mixed by Claim'
+               WHEN alice_tracker_dc_normalized.rpx_outcome = 'loss' THEN 'Not Invalid' 
+          END AS rpx_outcome,
+          alice_tracker_dc_normalized.patent,
+          CASE WHEN all_lits.case_type IS NULL THEN NULL
+               WHEN all_lits.case_type = 'Operating Company' THEN 'Operating Company'
+          ELSE 'NPE' END AS case_type,
+          CASE WHEN alice_tracker_dc_normalized.rolled_stage ~ '12' THEN 'Rule 12' 
+               WHEN alice_tracker_dc_normalized.rolled_stage ~'56' then 'Summary Judgment' 
+          ELSE 'Other' END AS case_stage,
+          CASE WHEN sufficient_facts = 'No' THEN 'Early Resolution Premature'
+		           WHEN sufficient_facts = 'Yes' THEN 'Sufficient Facts for Early Resolution'
+        	ELSE sufficient_facts END AS sufficient_facts,
+          berkheimer_aatrix,
+          CASE WHEN market_sector IN ('Other', 'Energy', 'Logistics', 'Manufacturing') THEN 'Other Sectors' ELSE market_sector END AS market_sector,
+          all_lits.court_common,
+          alice_tracker_dc_normalized.decision_date
+      FROM rpx_reporting.alice_tracker_dc_normalized 
+        LEFT JOIN rpx_reporting.all_lits 
+         ON alice_tracker_dc_normalized.case_key = all_lits.case_key 
+      WHERE all_lits.case_key IS NOT NULL
+      ORDER BY alice_tracker_dc_normalized.decision_date DESC")
+  executeQ <- dbGetQuery(con,query)
+  dbDisconnect(con)
+  return(executeQ)
+}
+alice_patents()
